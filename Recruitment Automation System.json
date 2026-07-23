@@ -1,0 +1,292 @@
+{
+  "name": "Recruitment Automation System",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1-MXIFvtFSjxfRzKCsUVTIgc2mrKEMqWG",
+          "mode": "list",
+          "cachedResultName": "Recruitment System",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1-MXIFvtFSjxfRzKCsUVTIgc2mrKEMqWG"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f89743b7-b506-4313-bb5b-795dd28222a2",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "n4oht7Rf5OjTSssG",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "c6f2888c-f3d1-4a61-bbb6-3bbde7e5982e",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "n4oht7Rf5OjTSssG",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "3ed36464-417d-4a66-80e1-122c02c5bbc1",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.text;\n\nconst email = text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/)?.[0] || \"\";\n\nconst phone = text.match(/(\\+91[-\\s]?)?[6-9]\\d{9}/)?.[0] || \"\";\n\nconst linkedin = text.match(/https?:\\/\\/(www\\.)?linkedin\\.com\\/[^\\s]+/i)?.[0] || \"\";\n\nconst github = text.match(/https?:\\/\\/(www\\.)?github\\.com\\/[^\\s]+/i)?.[0] || \"\";\n\n// First non-empty line is usually the candidate's name\nconst lines = text.split(\"\\n\").map(line => line.trim()).filter(Boolean);\nconst candidate_name = lines[0] || \"\";\n\n// Simple skills detection\nconst skillList = [\n  \"Python\",\n  \"SQL\",\n  \"Power BI\",\n  \"Tableau\",\n  \"Excel\",\n  \"R\",\n  \"Java\",\n  \"JavaScript\",\n  \"React\",\n  \"Flask\",\n  \"MongoDB\",\n  \"MySQL\",\n  \"Git\",\n  \"Machine Learning\",\n  \"HTML\",\n  \"CSS\"\n];\n\nconst skills = skillList.filter(skill =>\n  text.toLowerCase().includes(skill.toLowerCase())\n);\n\n// CGPI extraction\nconst cgpi = text.match(/CGPI[:\\s]*([0-9]+(\\.[0-9]+)?)/i)?.[1] || \"\";\n\n// Education extraction\nconst education = text.match(/Bachelor[\\s\\S]*?(?=\\n[A-Z]{2,}|$)/i)?.[0] || \"\";\n\nreturn [\n  {\n    json: {\n      candidate_name,\n      phone,\n      email,\n      linkedin,\n      github,\n      cgpi,\n      education,\n      skills: skills.join(\", \"),\n      resume_text: text\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "2d6d386f-794d-488d-9b91-3c6606e8ca82",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1C58UIoWr5UJeshBwPxDP0PJw-YvNciKGnr9KN5FjA4c",
+          "mode": "list",
+          "cachedResultName": "Candidate Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1C58UIoWr5UJeshBwPxDP0PJw-YvNciKGnr9KN5FjA4c/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1C58UIoWr5UJeshBwPxDP0PJw-YvNciKGnr9KN5FjA4c/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Candidate ID": "=CAN-{{$now.format('yyyyMMddHHmmss')}}",
+            "Email": "={{ $json.email }}",
+            "Phone": "={{ $json.phone }}",
+            "CGPI": "={{ $json.cgpi }}",
+            "Education": "={{ $json.education }}",
+            "Skills": "={{ $json.skills }}",
+            "Resume Link": "={{ $('Download file').item.json.iconLink }}",
+            "Date": "={{ $('Download file').item.json.createdTime }}",
+            "Name": "={{ $json.candidate_name }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Candidate ID",
+              "displayName": "Candidate ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "CGPI",
+              "displayName": "CGPI",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Education",
+              "displayName": "Education",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Skills",
+              "displayName": "Skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resume Link",
+              "displayName": "Resume Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        832,
+        0
+      ],
+      "id": "007ea369-9547-4f60-b864-e0d37e4029a2",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dJMakd8yHsf8Qy6C",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "e33a0aa6-d818-414f-b285-008952e4b4cd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e5d6b625adffc7a6e4417b55c601f43549fb81e31962c768815bb8bede36e71e"
+  },
+  "nodeGroups": [],
+  "id": "yZetAtbOp6ONOPoa",
+  "tags": []
+}
